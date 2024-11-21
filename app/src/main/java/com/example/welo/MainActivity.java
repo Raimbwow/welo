@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Centrer la carte sur une position initiale (Paris)
         mapView.getController().setZoom(15.0);
-        GeoPoint startPoint = new GeoPoint(48.8566, 2.3522); // Coordonnées de Paris
+        GeoPoint startPoint = new GeoPoint(48.400002, -4.48333); // Coordonnées de Brest
         mapView.getController().setCenter(startPoint);
 
         // Ajouter un marqueur à la position initiale
