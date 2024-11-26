@@ -2,6 +2,7 @@ package com.example.welo;
 
 import android.os.Bundle;
 
+import com.google.android.gms.maps.model.Tile;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -21,14 +22,27 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
+import org.mapsforge.map.android.util.AndroidUtil;
+import org.mapsforge.map.layer.renderer.TileRendererLayer;
 import org.osmdroid.config.Configuration;
+import org.osmdroid.shape.ShapeConverter;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Overlay;
 
 import java.io.File;
+import java.util.List;
+
 import com.example.welo.databinding.ActivityMainBinding;
+
+import org.mapsforge.map.reader.MapFile;
+import org.mapsforge.map.layer.cache.TileCache;
+//import org.mapsforge.map.layer.TileRendererLayer;
+import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
+import org.osmdroid.views.MapView;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -46,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
         Configuration.getInstance().setOsmdroidTileCache(new File(getCacheDir(), "osmdroid/tiles"));
 
         setContentView(R.layout.activity_main);
+        // Initialiser Mapsforge
+        AndroidGraphicFactory.createInstance(this.getApplication());
 
 
         // Initialisation de la MapView
@@ -66,6 +82,27 @@ public class MainActivity extends AppCompatActivity {
         startMarker.setTitle("Vous êtes ici !");
         mapView.getOverlays().add(startMarker);
 
+
+        // Charger le fichier .map de Mapsforge
+        File mapFile = new File(getExternalFilesDir(null), "your-map-file.map");
+        if (!mapFile.exists()) {
+            throw new RuntimeException("Le fichier .map est introuvable");
+        }
+        MapFile mapDataStore = new MapFile(mapFile);
+
+        // Créer un cache de tuiles pour Mapsforge
+        TileCache tileCache = AndroidUtil.createTileCache(
+                this,
+                "mapsforgeCache",
+                mapView.getTileRequestCompleteHandler(),
+                mapView.getModel().displayModel.getTileSize(),
+                1f
+        );
+
+
+        List<Overlay> folder = ShapeConverter.convert(mMapView, new File(myshape));
+        mMapView.getOverlayManager().addAll(folder);
+        mMapView.invalidate();
         // Demander les permissions nécessaires
 
         // IMPORTANT PROBLEME A REGLER
@@ -88,6 +125,11 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         //NavigationUI.setupWithNavController(binding.navView, navController);
+
+        // Ajouter la couche Mapsforge à OSMDroid
+        mapView.getOverlayManager().add(tileRendererLayer);
+        mapView.setZoomLevel(15);
+
     }
 
     // Demander les permissions nécessaires au démarrage
