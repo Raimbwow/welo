@@ -1,8 +1,10 @@
 package com.example.welo;
 
+import static java.security.AccessController.getContext;
+
+import android.content.Context;
 import android.os.Bundle;
 
-import com.google.android.gms.maps.model.Tile;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -11,37 +13,42 @@ import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
-
-import com.example.welo.R;
-import android.Manifest;
 import android.content.pm.PackageManager;
-import android.os.Bundle;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 
-import androidx.annotation.NonNull;
+
 import androidx.core.app.ActivityCompat;
 
-import org.mapsforge.map.android.util.AndroidUtil;
-import org.mapsforge.map.layer.renderer.TileRendererLayer;
+
 import org.osmdroid.config.Configuration;
-import org.osmdroid.shape.ShapeConverter;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.views.MapView;
+
+import java.util.ArrayList;
+
+
+import android.Manifest;
+
+
+
+
+import androidx.annotation.NonNull;
+
+
+
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.ItemizedIconOverlay;
+import org.osmdroid.views.overlay.ItemizedOverlayWithFocus;
 import org.osmdroid.views.overlay.Marker;
-import org.osmdroid.views.overlay.Overlay;
 
 import java.io.File;
-import java.util.List;
 
-import com.example.welo.databinding.ActivityMainBinding;
 
-import org.mapsforge.map.reader.MapFile;
-import org.mapsforge.map.layer.cache.TileCache;
-//import org.mapsforge.map.layer.TileRendererLayer;
-import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
-import org.osmdroid.views.MapView;
+
+import org.osmdroid.views.overlay.OverlayItem;
+import org.osmdroid.views.overlay.compass.CompassOverlay;
+import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -50,87 +57,93 @@ public class MainActivity extends AppCompatActivity {
 
     private MapView mapView;
     private static final int REQUEST_PERMISSIONS = 1;
+
+
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
 
-        // Configuration de OSMDroid
-        Configuration.getInstance().setUserAgentValue(getPackageName());
-        Configuration.getInstance().setOsmdroidBasePath(new File(getCacheDir(), "osmdroid"));
-        Configuration.getInstance().setOsmdroidTileCache(new File(getCacheDir(), "osmdroid/tiles"));
+            // Configuration de OSMDroid
+            Configuration.getInstance().setUserAgentValue(getPackageName());
+            Configuration.getInstance().setOsmdroidBasePath(new File(getCacheDir(), "osmdroid"));
+            Configuration.getInstance().setOsmdroidTileCache(new File(getCacheDir(), "osmdroid/tiles"));
 
-        setContentView(R.layout.activity_main);
-        // Initialiser Mapsforge
-        AndroidGraphicFactory.createInstance(this.getApplication());
+            setContentView(R.layout.activity_main);
 
 
-        // Initialisation de la MapView
-        mapView = findViewById(R.id.map);
-        mapView.setTileSource(TileSourceFactory.OpenTopo);
-        mapView.setBuiltInZoomControls(true);
-        mapView.setMultiTouchControls(true);
+            // Initialisation de la MapView
+            mapView = findViewById(R.id.map);
+            mapView.setTileSource(TileSourceFactory.OpenTopo);
+            mapView.setBuiltInZoomControls(true);
+            mapView.setMultiTouchControls(true);
 
-        // Centrer la carte sur une position initiale (Paris)
-        mapView.getController().setZoom(15.0);
-        GeoPoint startPoint = new GeoPoint(48.400002, -4.48333); // Coordonnées de Brest
-        mapView.getController().setCenter(startPoint);
+            CompassOverlay mCompassOverlay = new CompassOverlay(this, new InternalCompassOrientationProvider(this), mapView);
+            mCompassOverlay.enableCompass();
+            mapView.getOverlays().add(mCompassOverlay);
+            // Centrer la carte sur une position initiale (Paris)
+            mapView.getController().setZoom(15.0);
+            GeoPoint startPoint = new GeoPoint(48.400002, -4.48333); // Coordonnées de Brest
+            mapView.getController().setCenter(startPoint);
 
-        // Ajouter un marqueur à la position initiale
-        Marker startMarker = new Marker(mapView);
-        startMarker.setPosition(startPoint);
-        startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-        startMarker.setTitle("Vous êtes ici !");
-        mapView.getOverlays().add(startMarker);
+            // Ajouter un marqueur à la position initiale
+            Marker startMarker = new Marker(mapView);
+            startMarker.setPosition(startPoint);
+            startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+            startMarker.setTitle("Vous êtes ici !");
+            mapView.getOverlays().add(startMarker);
 
 
-        // Charger le fichier .map de Mapsforge
-        File mapFile = new File(getExternalFilesDir(null), "your-map-file.map");
-        if (!mapFile.exists()) {
-            throw new RuntimeException("Le fichier .map est introuvable");
+
+            // Demander les permissions nécessaires
+
+            // IMPORTANT PROBLEME A REGLER
+
+            // ça peut régler le problème https://github.com/osmdroid/osmdroid/wiki/How-to-use-the-osmdroid-library-(Java)
+
+            //*********************************************************//
+            /* requestPermissionsIfNecessary(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            }); */
+            //*********************************************************************
+
+            //binding = ActivityMainBinding.inflate(getLayoutInflater());
+            //setContentView(binding.getRoot());
+
+            BottomNavigationView navView = findViewById(R.id.nav_view);
+            // Passing each menu ID as a set of Ids because each
+            // menu should be considered as top level destinations.
+            AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
+                    R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
+                    .build();
+            NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
+            NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+            //NavigationUI.setupWithNavController(binding.navView, navController);
+            //your items
+            ArrayList<OverlayItem> items = new ArrayList<>();
+            items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48334))); // Lat/Lon decimal degrees
+
+        //https://github.com/osmdroid/osmdroid/wiki/How-to-use-the-osmdroid-library-(Java)
+        //the overlay
+            ItemizedOverlayWithFocus<OverlayItem> mOverlay = new ItemizedOverlayWithFocus<>(items,
+                new ItemizedIconOverlay.OnItemGestureListener<>() {
+                    @Override
+                    public boolean onItemSingleTapUp(final int index, final OverlayItem item) {
+                        //do something
+                        return true;
+                    }
+                    @Override
+                    public boolean onItemLongPress(final int index, final OverlayItem item) {
+                        return false;
+                    }
+                }, this);
+
+            mOverlay.setFocusItemsOnTap(true);
+
+            mapView.getOverlays().add(mOverlay);
+
+
         }
-        MapFile mapDataStore = new MapFile(mapFile);
-
-        // Créer un cache de tuiles pour Mapsforge
-        TileCache tileCache = AndroidUtil.createTileCache(
-                this,
-                "mapsforgeCache",
-                mapView.getTileRequestCompleteHandler(),
-                mapView.getModel().displayModel.getTileSize(),
-                1f
-        );
-
-
-        List<Overlay> folder = ShapeConverter.convert(mMapView, new File(myshape));
-        mMapView.getOverlayManager().addAll(folder);
-        mMapView.invalidate();
-        // Demander les permissions nécessaires
-
-        // IMPORTANT PROBLEME A REGLER
-        //*********************************************************//
-        /* requestPermissionsIfNecessary(new String[]{
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        }); */
-        //*********************************************************************
-
-        //binding = ActivityMainBinding.inflate(getLayoutInflater());
-        //setContentView(binding.getRoot());
-
-        BottomNavigationView navView = findViewById(R.id.nav_view);
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
-        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
-                .build();
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-        //NavigationUI.setupWithNavController(binding.navView, navController);
-
-        // Ajouter la couche Mapsforge à OSMDroid
-        mapView.getOverlayManager().add(tileRendererLayer);
-        mapView.setZoomLevel(15);
-
-    }
 
     // Demander les permissions nécessaires au démarrage
     private void requestPermissionsIfNecessary(String[] permissions) {
@@ -181,4 +194,6 @@ public class MainActivity extends AppCompatActivity {
             mapView.onDetach(); // Libérer les ressources de la MapView
         }
     }
+
+
 }
