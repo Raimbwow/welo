@@ -1,8 +1,6 @@
 package com.example.welo;
 
-import static java.security.AccessController.getContext;
 
-import android.content.Context;
 import android.os.Bundle;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -21,6 +19,7 @@ import androidx.core.app.ActivityCompat;
 
 
 import org.osmdroid.config.Configuration;
+import org.osmdroid.events.MapEventsReceiver;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.views.MapView;
 
@@ -28,8 +27,8 @@ import java.util.ArrayList;
 
 
 import android.Manifest;
-
-
+import android.view.MotionEvent;
+import android.view.View;
 
 
 import androidx.annotation.NonNull;
@@ -38,8 +37,10 @@ import androidx.annotation.NonNull;
 
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.Projection;
 import org.osmdroid.views.overlay.ItemizedIconOverlay;
 import org.osmdroid.views.overlay.ItemizedOverlayWithFocus;
+import org.osmdroid.views.overlay.MapEventsOverlay;
 import org.osmdroid.views.overlay.Marker;
 
 import java.io.File;
@@ -121,8 +122,35 @@ public class MainActivity extends AppCompatActivity {
             //NavigationUI.setupWithNavController(binding.navView, navController);
             //your items
             ArrayList<OverlayItem> items = new ArrayList<>();
-            items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48334))); // Lat/Lon decimal degrees
+            items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48333))); // Lat/Lon decimal degrees
+            items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48)));
+            // Ajoutez un écouteur de clic sur la carte
+            mapView.getOverlays().add(new MapEventsOverlay(new MapEventsReceiver()){
+                @Override
+                public boolean longPressHelper(GeoPoint p) {
+                    return false;
+                }
+                @Override
+                public boolean singleTapConfirmedHelper(GeoPoint p) {
+                    et_lat.setHint(String.valueOf(p.getLatitude()));
+                    et_long.setHint(String.valueOf(p.getLongitude()));
+                    return false;
+                }
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (event.getAction() == MotionEvent.ACTION_UP) {
+                        // Récupérez les coordonnées du clic
+                        Projection projection = mapView.getProjection();
+                        GeoPoint geoPoint = (GeoPoint) projection.fromPixels((int) event.getX(), (int) event.getY());
 
+                        // Ajouter un nouvel item à la carte
+                        items.add(new OverlayItem("Title", "Description", geoPoint));
+
+                        return true; // Clic traité
+                    }
+                    return false; // Sinon, passe au traitement standard
+                }
+            });
         //https://github.com/osmdroid/osmdroid/wiki/How-to-use-the-osmdroid-library-(Java)
         //the overlay
             ItemizedOverlayWithFocus<OverlayItem> mOverlay = new ItemizedOverlayWithFocus<>(items,
