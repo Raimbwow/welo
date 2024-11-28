@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import android.Manifest;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 
 import androidx.annotation.NonNull;
@@ -52,14 +53,17 @@ import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity{
 
     //private ActivityMainBinding binding;
 
     private MapView mapView;
     private static final int REQUEST_PERMISSIONS = 1;
 
-
+    public boolean singleTapConfirmedHelper(GeoPoint p) {
+        Toast.makeText(this, "Tapped", Toast.LENGTH_SHORT).show();
+        return true;
+    }
     @Override
         protected void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
@@ -125,32 +129,9 @@ public class MainActivity extends AppCompatActivity {
             items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48333))); // Lat/Lon decimal degrees
             items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48)));
             // Ajoutez un écouteur de clic sur la carte
-            mapView.getOverlays().add(new MapEventsOverlay(new MapEventsReceiver()){
-                @Override
-                public boolean longPressHelper(GeoPoint p) {
-                    return false;
-                }
-                @Override
-                public boolean singleTapConfirmedHelper(GeoPoint p) {
-                    et_lat.setHint(String.valueOf(p.getLatitude()));
-                    et_long.setHint(String.valueOf(p.getLongitude()));
-                    return false;
-                }
-                @Override
-                public boolean onTouch(View v, MotionEvent event) {
-                    if (event.getAction() == MotionEvent.ACTION_UP) {
-                        // Récupérez les coordonnées du clic
-                        Projection projection = mapView.getProjection();
-                        GeoPoint geoPoint = (GeoPoint) projection.fromPixels((int) event.getX(), (int) event.getY());
 
-                        // Ajouter un nouvel item à la carte
-                        items.add(new OverlayItem("Title", "Description", geoPoint));
 
-                        return true; // Clic traité
-                    }
-                    return false; // Sinon, passe au traitement standard
-                }
-            });
+
         //https://github.com/osmdroid/osmdroid/wiki/How-to-use-the-osmdroid-library-(Java)
         //the overlay
             ItemizedOverlayWithFocus<OverlayItem> mOverlay = new ItemizedOverlayWithFocus<>(items,
@@ -166,11 +147,29 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }, this);
 
-            mOverlay.setFocusItemsOnTap(true);
-
-            mapView.getOverlays().add(mOverlay);
 
 
+        MapEventsReceiver mapEventsReceiver = (MapEventsReceiver) this;
+
+        mapView.getOverlays().add(new MapEventsOverlay(mapEventsReceiver){
+
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    // Récupérez les coordonnées du clic
+                    Projection projection = mapView.getProjection();
+                    GeoPoint geoPoint = (GeoPoint) projection.fromPixels((int) event.getX(), (int) event.getY());
+
+                    // Ajouter un nouvel item à la carte
+                    items.add(new OverlayItem("Title", "Description", geoPoint));
+
+                    return true; // Clic traité
+                };
+                return false; // Sinon, passe au traitement standard
+            }
+        });
+        mOverlay.setFocusItemsOnTap(true);
+
+        mapView.getOverlays().add(mOverlay);
         }
 
     // Demander les permissions nécessaires au démarrage
