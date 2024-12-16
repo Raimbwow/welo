@@ -6,6 +6,7 @@ import android.os.Bundle;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -53,17 +54,24 @@ import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 
 
-public class MainActivity extends AppCompatActivity{
+public class MainActivity extends AppCompatActivity implements MapEventsReceiver{
 
     //private ActivityMainBinding binding;
 
     private MapView mapView;
     private static final int REQUEST_PERMISSIONS = 1;
-
-    public boolean singleTapConfirmedHelper(GeoPoint p) {
+    @Override public boolean singleTapConfirmedHelper(GeoPoint p) {
+        ArrayList<OverlayItem> items = new ArrayList<>();
+        items.add(new OverlayItem("Title", "Description", p));
         Toast.makeText(this, "Tapped", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Tap on ("+p.getLatitude()+","+p.getLongitude()+")", Toast.LENGTH_SHORT).show();
         return true;
     }
+    @Override public boolean longPressHelper(GeoPoint p) {
+        //DO NOTHING FOR NOW:
+        return false;
+    }
+
     @Override
         protected void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
@@ -134,7 +142,8 @@ public class MainActivity extends AppCompatActivity{
 
         //https://github.com/osmdroid/osmdroid/wiki/How-to-use-the-osmdroid-library-(Java)
         //the overlay
-            ItemizedOverlayWithFocus<OverlayItem> mOverlay = new ItemizedOverlayWithFocus<>(items,
+        /*
+        ItemizedOverlayWithFocus<OverlayItem> mOverlay = new ItemizedOverlayWithFocus<>(items,
                 new ItemizedIconOverlay.OnItemGestureListener<>() {
                     @Override
                     public boolean onItemSingleTapUp(final int index, final OverlayItem item) {
@@ -149,7 +158,7 @@ public class MainActivity extends AppCompatActivity{
 
 
 
-        MapEventsReceiver mapEventsReceiver = (MapEventsReceiver) this;
+        MapEventsReceiver mapEventsReceiver = (MapEventsReceiver) null;
 
         mapView.getOverlays().add(new MapEventsOverlay(mapEventsReceiver){
 
@@ -167,9 +176,13 @@ public class MainActivity extends AppCompatActivity{
                 return false; // Sinon, passe au traitement standard
             }
         });
+
         mOverlay.setFocusItemsOnTap(true);
+        MotionEvent MotionEvent = null;
 
         mapView.getOverlays().add(mOverlay);
+        */
+
         }
 
     // Demander les permissions nécessaires au démarrage
@@ -199,6 +212,7 @@ public class MainActivity extends AppCompatActivity{
                 finish();
             }
         }
+
     }
 
     // Gérer le cycle de vie pour libérer les ressources liées à la carte
