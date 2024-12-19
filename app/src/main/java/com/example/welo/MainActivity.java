@@ -1,6 +1,7 @@
 package com.example.welo;
 
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -18,6 +19,8 @@ import android.content.pm.PackageManager;
 
 import androidx.core.app.ActivityCompat;
 
+import org.osmdroid.views.overlay.GroundOverlay;
+import org.osmdroid.views.overlay.MapEventsOverlay;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.events.MapEventsReceiver;
@@ -48,7 +51,7 @@ import org.osmdroid.views.overlay.Marker;
 import java.io.File;
 
 
-
+import org.osmdroid.views.overlay.Overlay;
 import org.osmdroid.views.overlay.OverlayItem;
 import org.osmdroid.views.overlay.Polygon;
 import org.osmdroid.views.overlay.compass.CompassOverlay;
@@ -56,7 +59,7 @@ import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 import org.osmdroid.views.overlay.infowindow.BasicInfoWindow;
 
 
-public class MainActivity extends AppCompatActivity implements MapEventsReceiver{
+public class MainActivity extends AppCompatActivity {
 
     //private ActivityMainBinding binding;
 
@@ -65,6 +68,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
     ArrayList<OverlayItem> items = new ArrayList<>();
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
         protected void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
@@ -98,7 +102,6 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             startMarker.setTitle("Vous êtes ici !");
             mapView.getOverlays().add(startMarker);
 
-
             // Demander les permissions nécessaires
 
             // IMPORTANT PROBLEME A REGLER
@@ -130,36 +133,36 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48)));
             // Ajoutez un écouteur de clic sur la carte
 
+        MapEventsOverlay events = new MapEventsOverlay(new MapEventsReceiver() {
+            @Override
+            public boolean singleTapConfirmedHelper(GeoPoint p) {
+                Toast.makeText(getApplicationContext(), "Tap on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
+                items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.40)));
+                Polygon circle = new Polygon();
+                circle.setPoints(Polygon.pointsAsCircle(p, 200.0));
+                mapView.getOverlays().add(circle);
+
+                circle.setTitle("Centered on " + p.getLatitude() + "," + p.getLongitude());
+                return true;
+            }
+
+            @Override
+            public boolean longPressHelper(GeoPoint p) {
+                Toast.makeText(getApplicationContext(), "Long press on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
+                Polygon circle = new Polygon();
+                circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
+                mapView.getOverlays().add(circle);
+
+                return false;
+            }
+
+        });
+        mapView.getOverlayManager().add(events);
 
 
-        //https://github.com/osmdroid/osmdroid/wiki/How-to-use-the-osmdroid-library-(Java)
-        //the overlay
-        /* modification possible de l'overlay mais mauvaise technique pour du dynamique
-        ItemizedOverlayWithFocus<OverlayItem> mOverlay = new ItemizedOverlayWithFocus<>(items,
-                new ItemizedIconOverlay.OnItemGestureListener<>() {
-                    @Override
-                    public boolean onItemSingleTapUp(final int index, final OverlayItem item) {
-                        //do something
-                        items.add(new OverlayItem("Title", "Description",new GeoPoint(48.400002, -4.48)));
-
-                        return true;
-                    }
-                    @Override
-                    public boolean onItemLongPress(final int index, final OverlayItem item) {
-                        return false;
-                    }
-                }, this);
-
-
-        */
-        MapEventsReceiver mapEventsReceiver = (MapEventsReceiver) null;
-
-        //mapView.getOverlays().add(mOverlay);
-
-        //mapView.setMapEventsReceiver(this);
-
-        //map.getOverlays().add(new MapEventsOverlay(mReceive));
+        // mapView.();
         };
+    // Gérer les événements de carte (tap et long press)
 
     // Demander les permissions nécessaires au démarrage
     private void requestPermissionsIfNecessary(String[] permissions) {
@@ -170,25 +173,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             }
         }
     }
-    @Override public boolean singleTapConfirmedHelper(GeoPoint p) {
-        //SHow the longitude and Latitude in the bottom of the screen
-        Toast.makeText(getApplicationContext(), "Tap on ("+p.getLatitude()+","+p.getLongitude()+")", Toast.LENGTH_SHORT).show();
 
-        items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.40)));
-        Polygon circle = new Polygon();
-        circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
-        mapView.getOverlays().add(circle);
-        circle.setInfoWindow(new BasicInfoWindow(org.osmdroid.shape.R.layout.bonuspack_bubble, mapView));
-        circle.setTitle("Centered on "+p.getLatitude()+","+p.getLongitude());
-        return true;
-    }
-    @Override public boolean longPressHelper(GeoPoint p) {
-        Toast.makeText(getApplicationContext(), "Tap on ("+p.getLatitude()+","+p.getLongitude()+")", Toast.LENGTH_SHORT).show();
 
-        Polygon circle = new Polygon();
-        circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
-        return true;
-    };
     // Gestion des résultats des demandes de permissions
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -208,6 +194,30 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
 
     }
+    /*protected void onClick(Bundle savedInstanceState){
+        final MapEventsReceiver mReceive = new MapEventsReceiver() {
+            @Override
+            public boolean singleTapConfirmedHelper(GeoPoint p) {
+                Toast.makeText(getApplicationContext(), "Tap on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
+                items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.40)));
+                Polygon circle = new Polygon();
+                circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
+                mapView.getOverlays().add(circle);
+
+                circle.setTitle("Centered on " + p.getLatitude() + "," + p.getLongitude());
+                return true;
+            }
+
+            @Override
+            public boolean longPressHelper(GeoPoint p) {
+                Toast.makeText(getApplicationContext(), "Long press on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
+                Polygon circle = new Polygon();
+                circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
+                return true;
+            }
+
+        };
+    }*/
 
     // Gérer le cycle de vie pour libérer les ressources liées à la carte
     @Override
