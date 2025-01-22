@@ -1,5 +1,5 @@
 package com.example.welo;
-
+import com.example.welo.R;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
@@ -20,6 +20,7 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 
 import org.osmdroid.views.overlay.GroundOverlay;
+import org.osmdroid.views.overlay.GroundOverlay4;
 import org.osmdroid.views.overlay.MapEventsOverlay;
 
 import org.osmdroid.config.Configuration;
@@ -31,8 +32,13 @@ import java.util.ArrayList;
 
 
 import android.Manifest;
+import android.view.ContextMenu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.PopupMenu;
 import android.widget.Toast;
 
 
@@ -51,12 +57,11 @@ import org.osmdroid.views.overlay.Marker;
 import java.io.File;
 
 
-import org.osmdroid.views.overlay.Overlay;
 import org.osmdroid.views.overlay.OverlayItem;
 import org.osmdroid.views.overlay.Polygon;
 import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
-import org.osmdroid.views.overlay.infowindow.BasicInfoWindow;
+
 
 
 public class MainActivity extends AppCompatActivity {
@@ -136,19 +141,28 @@ public class MainActivity extends AppCompatActivity {
         MapEventsOverlay events = new MapEventsOverlay(new MapEventsReceiver() {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
+
                 Toast.makeText(getApplicationContext(), "Tap on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
                 items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.40)));
-                Polygon circle = new Polygon();
+                /*Polygon circle = new Polygon();
                 circle.setPoints(Polygon.pointsAsCircle(p, 200.0));
                 mapView.getOverlays().add(circle);
 
-                circle.setTitle("Centered on " + p.getLatitude() + "," + p.getLongitude());
+                circle.setTitle("Centered on " + p.getLatitude() + "," + p.getLongitude());*/
+
+
                 return true;
             }
 
             @Override
             public boolean longPressHelper(GeoPoint p) {
+                GeoPoint click = p;
                 Toast.makeText(getApplicationContext(), "Long press on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
+                GroundOverlay myGroundOverlay = new GroundOverlay();
+                /*myGroundOverlay.setPosition(click,p);
+                myGroundOverlay.setImage(getResources().getDrawable(R.drawable.ic_launcher).mutate());
+                myGroundOverlay.set(2000.0f);
+                map.getOverlays().add(myGroundOverlay);*/
                 Polygon circle = new Polygon();
                 circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
                 mapView.getOverlays().add(circle);
@@ -161,6 +175,14 @@ public class MainActivity extends AppCompatActivity {
 
 
         // mapView.();
+
+        // Supposons que vous avez une ListView ou une autre vue sur laquelle vous voulez le menu contextuel
+
+        // ATTENTIION MAP N4EST SUREMENT PAS ADAPTE ICI
+
+
+        registerForContextMenu(mapView);
+
         };
     // Gérer les événements de carte (tap et long press)
 
@@ -239,6 +261,32 @@ public class MainActivity extends AppCompatActivity {
             mapView.onDetach(); // Libérer les ressources de la MapView
         }
     }
-
-
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v,
+                                    ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.context_menu, menu);
+    }
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.item12) {
+            // Action pour item1
+            // Exemple d'action pour l'item12 : Ajouter un marqueur sur une carte
+            GeoPoint point = new GeoPoint(48.400002, -4.48333); // Coordonnées de Brest
+            Marker marker = new Marker(mapView);
+            marker.setPosition(point);
+            marker.setTitle("Nouveau marqueur");
+            mapView.getOverlays().add(marker);
+            mapView.invalidate(); // Rafraîchir la carte pour afficher le marqueur
+            return true;
+        } else if (id == R.id.item22) {
+            // Action pour item2
+            mapView.getController().zoomOut();
+            return true;
+        } else {
+            return super.onContextItemSelected(item);
+        }
+    }
 }
