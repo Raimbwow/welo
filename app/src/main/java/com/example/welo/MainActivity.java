@@ -122,69 +122,65 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("ClickableViewAccessibility")
     @Override
 
-        protected void onCreate(Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
+        //handle permissions first, before map is created. not depicted here
+
+        //load/initialize the osmdroid configuration, this can be done
+        Context ctx = getApplicationContext();
+        Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
+        //setting this before the layout is inflated is a good idea
+        //it 'should' ensure that the map has a writable location for the map cache, even without permissions
+        //if no tiles are displayed, you can try overriding the cache path using Configuration.getInstance().setCachePath
+        //see also StorageUtils
+        //note, the load method also sets the HTTP User Agent to your application's package name, abusing osm's
+        //tile servers will get you banned based on this string
+
+        // Configuration de OSMDroid
+        Configuration.getInstance().setUserAgentValue(getPackageName());
+        Configuration.getInstance().setOsmdroidBasePath(new File(getCacheDir(), "osmdroid"));
+        Configuration.getInstance().setOsmdroidTileCache(new File(getCacheDir(), "osmdroid/tiles"));
+
+        //inflate and create the map
+        setContentView(R.layout.activity_main);
+
+
+        // Initialisation de la MapView
+        mapView = findViewById(R.id.map);
+        mapView.setTileSource(TileSourceFactory.OpenTopo);
+        mapView.setBuiltInZoomControls(true);
+        mapView.setMultiTouchControls(true);
   
-            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-            StrictMode.setThreadPolicy(policy);
-  
-            Context ctx = getApplicationContext();
-            Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
+        CompassOverlay mCompassOverlay = new CompassOverlay(this, new InternalCompassOrientationProvider(this), mapView);
+        mCompassOverlay.enableCompass();
+        mapView.getOverlays().add(mCompassOverlay);
 
-            // Configuration de OSMDroid
-            Configuration.getInstance().setUserAgentValue(getPackageName());
-            Configuration.getInstance().setOsmdroidBasePath(new File(getCacheDir(), "osmdroid"));
-            Configuration.getInstance().setOsmdroidTileCache(new File(getCacheDir(), "osmdroid/tiles"));
+        // Centrer la carte sur une position initiale (Paris)
+        mapView.getController().setZoom(15.0);
+        GeoPoint startPoint = new GeoPoint(48.39, -4.48); // Coordonnées de Brest
+        mapView.getController().setCenter(startPoint);
 
-            setContentView(R.layout.activity_main);
+        // Ajouter un marqueur à la position initiale
+        Marker startMarker = new Marker(mapView);
+        startMarker.setPosition(startPoint);
+        startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        startMarker.setTitle("Vous êtes ici !");
+        mapView.getOverlays().add(startMarker);
 
+        // Demander les permissions nécessaires
 
-            // Initialisation de la MapView
-            mapView = findViewById(R.id.map);
-            mapView.setTileSource(TileSourceFactory.OpenTopo);
-            mapView.setBuiltInZoomControls(true);
-            mapView.setMultiTouchControls(true);
+        // IMPORTANT PROBLEME A REGLER
+        //*********************************************************//
+         requestPermissionsIfNecessary(new String []{
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                 Manifest.permission.WRITE_EXTERNAL_STORAGE}
+        );
+        //*********************************************************************
 
-            CompassOverlay mCompassOverlay = new CompassOverlay(this, new InternalCompassOrientationProvider(this), mapView);
-            mCompassOverlay.enableCompass();
-            mapView.getOverlays().add(mCompassOverlay);
-            // Centrer la carte sur une position initiale (Paris)
-            mapView.getController().setZoom(15.0);
-            GeoPoint startPoint = new GeoPoint(48.400002, -4.48333); // Coordonnées de Brest
-            mapView.getController().setCenter(startPoint);
-
-            // Ajouter un marqueur à la position initiale
-            Marker startMarker = new Marker(mapView);
-            startMarker.setPosition(startPoint);
-            startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-            startMarker.setTitle("Vous êtes ici !");
-            mapView.getOverlays().add(startMarker);
-
-            // Demander les permissions nécessaires
-
-            // IMPORTANT PROBLEME A REGLER
-
-            // ça peut régler le problème https://github.com/osmdroid/osmdroid/wiki/How-to-use-the-osmdroid-library-(Java)
-
-            //*********************************************************//
-            requestPermissionsIfNecessary(new String[]{
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            }); 
-            //*********************************************************************
-
-            //binding = ActivityMainBinding.inflate(getLayoutInflater());
-            //setContentView(binding.getRoot());
-        
-
-            BottomNavigationView navView = findViewById(R.id.nav_view);
-            // Passing each menu ID as a set of Ids because each
-            // menu should be considered as top level destinations.
-            AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
-                    R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications)
-                    .build();
-            NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
-            NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
             //NavigationUI.setupWithNavController(binding.navView, navController);
             //your items
             ArrayList<OverlayItem> items = new ArrayList<>();
