@@ -1,4 +1,6 @@
 package com.example.welo;
+import static com.google.android.gms.maps.CameraUpdateFactory.zoomTo;
+
 import com.example.welo.R;
 
 import android.annotation.SuppressLint;
@@ -7,6 +9,7 @@ import android.os.Bundle;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -33,6 +36,7 @@ import java.util.ArrayList;
 
 import android.Manifest;
 import android.view.ContextMenu;
+import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -68,7 +72,9 @@ public class MainActivity extends AppCompatActivity {
 
     //private ActivityMainBinding binding;
 
-    private MapView mapView;
+
+
+private MapView mapView;
     private static final int REQUEST_PERMISSIONS = 1;
 
     ArrayList<OverlayItem> items = new ArrayList<>();
@@ -166,10 +172,12 @@ public class MainActivity extends AppCompatActivity {
                 Polygon circle = new Polygon();
                 circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
                 mapView.getOverlays().add(circle);
+                mapView.invalidate();
 
+                showMenu(p);
                 return false;
             }
-            //aaaa
+
         });
         mapView.getOverlayManager().add(events);
 
@@ -265,28 +273,61 @@ public class MainActivity extends AppCompatActivity {
     public void onCreateContextMenu(ContextMenu menu, View v,
                                     ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.context_menu, menu);
+        // Vérifiez que c'est bien la MapView qui a déclenché le menu
+        if (v.getId() == R.id.map) {
+            MenuInflater inflater = getMenuInflater();
+            inflater.inflate(R.menu.context_menu, menu); // Charger le fichier XML
+    }}
+    private void addMarker(GeoPoint point) {
+        Marker marker = new Marker(mapView);
+        marker.setPosition(point);
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        marker.setTitle("Marqueur ici");
+        mapView.getOverlays().add(marker);
+        mapView.invalidate(); // Re-dessiner la carte
+    }
+    private void zoomTo(GeoPoint point) {
+        mapView.getController().setZoom(18.0);
+        mapView.getController().setCenter(point);
+    }
+    @SuppressLint("NonConstantResourceId")
+    private void showMenu(GeoPoint p) {
+        // Créer un PopupMenu
+        PopupMenu popupMenu = new PopupMenu(this, findViewById(R.id.map));
+        MenuInflater inflater = popupMenu.getMenuInflater();
+        inflater.inflate(R.menu.context_menu, popupMenu.getMenu());
+
+        // Gérer les clics sur les options du menu
+        popupMenu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.item12) {
+                addMarker(p); // Ajouter un marqueur à l'endroit du clic long
+                return true;
+            } else if (item.getItemId() == R.id.item22) {
+                zoomTo(p); // Zoomer sur le point
+                return true;
+            }
+            return false;
+
+        });
+
+        popupMenu.show();
     }
     @Override
     public boolean onContextItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.item12) {
-            // Action pour item1
-            // Exemple d'action pour l'item12 : Ajouter un marqueur sur une carte
-            GeoPoint point = new GeoPoint(48.400002, -4.48333); // Coordonnées de Brest
+            GeoPoint point = new GeoPoint(48.400002, -4.48333);
             Marker marker = new Marker(mapView);
             marker.setPosition(point);
             marker.setTitle("Nouveau marqueur");
             mapView.getOverlays().add(marker);
-            mapView.invalidate(); // Rafraîchir la carte pour afficher le marqueur
+            mapView.invalidate();
             return true;
         } else if (id == R.id.item22) {
-            // Action pour item2
             mapView.getController().zoomOut();
             return true;
         } else {
             return super.onContextItemSelected(item);
         }
     }
-}
+    }
