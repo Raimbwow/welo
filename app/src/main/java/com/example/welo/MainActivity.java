@@ -70,9 +70,6 @@ import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 
 public class MainActivity extends AppCompatActivity {
 
-    //private ActivityMainBinding binding;
-
-
 
 private MapView mapView;
     private static final int REQUEST_PERMISSIONS = 1;
@@ -186,8 +183,6 @@ private MapView mapView;
 
         // Supposons que vous avez une ListView ou une autre vue sur laquelle vous voulez le menu contextuel
 
-        // ATTENTIION MAP N4EST SUREMENT PAS ADAPTE ICI
-
 
         registerForContextMenu(mapView);
 
@@ -224,30 +219,6 @@ private MapView mapView;
         }
 
     }
-    /*protected void onClick(Bundle savedInstanceState){
-        final MapEventsReceiver mReceive = new MapEventsReceiver() {
-            @Override
-            public boolean singleTapConfirmedHelper(GeoPoint p) {
-                Toast.makeText(getApplicationContext(), "Tap on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
-                items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.40)));
-                Polygon circle = new Polygon();
-                circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
-                mapView.getOverlays().add(circle);
-
-                circle.setTitle("Centered on " + p.getLatitude() + "," + p.getLongitude());
-                return true;
-            }
-
-            @Override
-            public boolean longPressHelper(GeoPoint p) {
-                Toast.makeText(getApplicationContext(), "Long press on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
-                Polygon circle = new Polygon();
-                circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
-                return true;
-            }
-
-        };
-    }*/
 
     // Gérer le cycle de vie pour libérer les ressources liées à la carte
     @Override
