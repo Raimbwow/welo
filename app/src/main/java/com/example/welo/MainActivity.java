@@ -1,18 +1,14 @@
 package com.example.welo;
-import static com.google.android.gms.maps.CameraUpdateFactory.zoomTo;
 
-
-import com.example.welo.R;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 
-import com.example.welo.ui.home.HomeFragment;
+
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.constraintlayout.widget.ConstraintSet;
+
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
@@ -40,7 +36,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.viewbinding.ViewBinding;
 
 import org.osmdroid.views.overlay.GroundOverlay;
-import org.osmdroid.views.overlay.GroundOverlay4;
+
 import org.osmdroid.views.overlay.MapEventsOverlay;
 
 import org.osmdroid.config.Configuration;
@@ -196,17 +192,31 @@ public class MainActivity extends AppCompatActivity {
         MapEventsOverlay events = new MapEventsOverlay(new MapEventsReceiver() {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
+// Affiche un Toast avec les coordonnées
+                Toast.makeText(getApplicationContext(), "Tap sur (" + p.getLatitude() + ", " + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
 
-                Toast.makeText(getApplicationContext(), "Tap on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
-                items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.40)));
+                // Création d’un OverlayItem
+                OverlayItem overlayItem = new OverlayItem(
+                        "Point tapé",
+                        "Coordonnées : " + p.getLatitude() + ", " + p.getLongitude(),
+                        p
+                );
+
+                // Ajout d'une icône personnalisée pour le marqueur
+                overlayItem.setMarker(ContextCompat.getDrawable(getApplicationContext(), R.drawable.panneau_2));
+
+                // Ajout à la liste des items et rafraîchissement
+                items.add(overlayItem);
+                mapView.invalidate();
+
+                return true;
+
                 /*Polygon circle = new Polygon();
                 circle.setPoints(Polygon.pointsAsCircle(p, 200.0));
                 mapView.getOverlays().add(circle);
 
                 circle.setTitle("Centered on " + p.getLatitude() + "," + p.getLongitude());*/
 
-
-                return true;
             }
 
             @Override
@@ -218,9 +228,7 @@ public class MainActivity extends AppCompatActivity {
                 myGroundOverlay.setImage(getResources().getDrawable(R.drawable.ic_launcher).mutate());
                 myGroundOverlay.set(2000.0f);
                 map.getOverlays().add(myGroundOverlay);*/
-                Polygon circle = new Polygon();
-                circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
-                mapView.getOverlays().add(circle);
+
                 mapView.invalidate();
 
                 showMenu(p);
@@ -362,10 +370,15 @@ public class MainActivity extends AppCompatActivity {
 
         // Gérer les clics sur les options du menu
         popupMenu.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.item12) {
+            if (item.getItemId() == R.id.Trajet) {
                 addMarker(p); // Ajouter un marqueur à l'endroit du clic long
                 return true;
-            } else if (item.getItemId() == R.id.item22) {
+
+            }
+            if (item.getItemId() == R.id.Route) {
+                addMarker(p); // Ajouter un marqueur à l'endroit du clic long
+                return true;
+            }else if (item.getItemId() == R.id.Travaux) {
                 zoomTo(p); // Zoomer sur le point
                 return true;
             }
@@ -375,8 +388,7 @@ public class MainActivity extends AppCompatActivity {
 
         popupMenu.show();
     }
-    @Override
-    public boolean onContextItemSelected(MenuItem item) {
+    /*public boolean onContextItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.item12) {
             GeoPoint point = new GeoPoint(48.400002, -4.48333);
@@ -391,6 +403,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         } else {
             return super.onContextItemSelected(item);
-        }
+        }*/
     }
-    }
+
