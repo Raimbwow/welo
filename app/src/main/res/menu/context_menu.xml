@@ -15,4 +15,7 @@
     <item
         android:id="@+id/item22"
         android:title="item22"/>
+    <item
+        android:id="@+id/Reset"
+        android:title="Réinitialiser la carte"/>
 </menu>

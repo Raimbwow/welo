@@ -1,10 +1,13 @@
 package com.example.welo;
 
-
+import android.app.AlertDialog;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
+import com.example.welo.R;
 
-
+import org.osmdroid.api.IGeoPoint;
+import org.osmdroid.views.overlay.infowindow.InfoWindow;
+import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,9 +20,9 @@ import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
-
+import android.widget.EditText;
 import android.content.pm.PackageManager;
-import com.example.welo.R;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -31,6 +34,8 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.MenuItem;
 
+import java.util.List;
+import java.util.ArrayList;
 
 import androidx.core.app.ActivityCompat;
 import androidx.viewbinding.ViewBinding;
@@ -60,7 +65,8 @@ import android.widget.Toast;
 
 
 import androidx.annotation.NonNull;
-
+import org.osmdroid.views.overlay.Overlay;
+import org.osmdroid.views.overlay.Marker;
 
 
 import org.osmdroid.util.GeoPoint;
@@ -114,6 +120,67 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PERMISSIONS = 1;
 
     ArrayList<OverlayItem> items = new ArrayList<>();
+    private int selectedIconRes = 0; // Stocke l'icône choisie par l'utilisateur
+    private final int selectedIconIndex = -1; // Index du type d'événement sélectionné
+    private long longPressStartTime = 0;
+    public class CustomInfoWindow extends MarkerInfoWindow {
+        public CustomInfoWindow(MapView mapView) {
+            //super(org.osmdroid.library.R.layout.bonuspack_bubble, mapView);
+            super(R.layout.custom_info_window, mapView);
+        }
+    }
+    private void showAddMarkerDialog(GeoPoint point) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Ajouter un événement");
+
+        // Ajouter un champ de texte pour la description
+        final EditText input = new EditText(this);
+        input.setHint("Description de l'événement");
+        builder.setView(input);
+
+        // Liste des types d'événements
+        String[] eventTypes = {"Accident", "Travaux", "Radar"};
+        Integer[] eventIcons = {R.drawable.accident, R.drawable.construction, R.drawable.panneau_2};
+
+        builder.setSingleChoiceItems(eventTypes, -1, (dialog, which) -> {
+            selectedIconRes = eventIcons[which]; // Sauvegarde l'icône choisie
+        });
+
+        builder.setPositiveButton("Ajouter", (dialog, which) -> {
+            String description = input.getText().toString();
+            if (!description.isEmpty() && selectedIconRes != 0) {
+                addMarker(point, eventTypes[selectedIconIndex], description, selectedIconRes);
+            } else {
+                Toast.makeText(this, "Veuillez entrer une description et choisir un type", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.setNegativeButton("Annuler", (dialog, which) -> dialog.cancel());
+
+        builder.show();
+    }
+
+    private void resetMap() {
+        // Récupérer les overlays actuels
+        List<Overlay> overlays = mapView.getOverlays();
+
+        // Créer une nouvelle liste qui ne contiendra que les éléments interactifs
+        List<Overlay> toKeep = new ArrayList<>();
+
+        for (Overlay overlay : overlays) {
+            // Vérifier si l'overlay est un gestionnaire d'interactions (ex: écouteur de clics)
+            if (overlay instanceof MapEventsOverlay) {
+                toKeep.add(overlay); // Ne pas supprimer les écouteurs d'événements
+            }
+        }
+
+        // Remplacer les overlays actuels par ceux qu'on garde
+        mapView.getOverlays().clear();
+        mapView.getOverlays().addAll(toKeep);
+
+        // Rafraîchir la carte
+        mapView.invalidate();
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -207,12 +274,6 @@ public class MainActivity extends AppCompatActivity {
 
                 return true;
 
-                /*Polygon circle = new Polygon();
-                circle.setPoints(Polygon.pointsAsCircle(p, 200.0));
-                mapView.getOverlays().add(circle);
-
-                circle.setTitle("Centered on " + p.getLatitude() + "," + p.getLongitude());*/
-
             }
 
             @Override
@@ -235,14 +296,35 @@ public class MainActivity extends AppCompatActivity {
         mapView.getOverlayManager().add(events);
 
 
-        // mapView.();
 
         // Supposons que vous avez une ListView ou une autre vue sur laquelle vous voulez le menu contextuel
 
 
         registerForContextMenu(mapView);
 
-        };
+
+
+
+        mapView.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    longPressStartTime = System.currentTimeMillis();
+                    break;
+
+                case MotionEvent.ACTION_UP:
+                    long pressDuration = System.currentTimeMillis() - longPressStartTime;
+                    if (pressDuration > 500) { // Seuil pour un long press (500ms)
+                        IGeoPoint geoPoint = mapView.getProjection().fromPixels((int) event.getX(), (int) event.getY());
+                        GeoPoint point = new GeoPoint(geoPoint.getLatitude(), geoPoint.getLongitude());
+                        showAddMarkerDialog(point);
+                    }
+                    break;
+            }
+            return false;
+        });
+
+
+    };
     // Gérer les événements de carte (tap et long press)
 
 
@@ -345,14 +427,26 @@ public class MainActivity extends AppCompatActivity {
             MenuInflater inflater = getMenuInflater();
             inflater.inflate(R.menu.context_menu, menu); // Charger le fichier XML
     }}
-    private void addMarker(GeoPoint point) {
+    private void addMarker(GeoPoint point, String title, String description, int iconRes) {
         Marker marker = new Marker(mapView);
         marker.setPosition(point);
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-        marker.setTitle("Marqueur ici");
+        marker.setTitle(title);
+        marker.setSnippet(description); // Description de l'événement
+
+        // Définir une icône personnalisée
+        @SuppressLint("UseCompatLoadingForDrawables")
+        Drawable icon = getResources().getDrawable(iconRes, null);
+        marker.setIcon(icon);
+
+        // Ajouter une fenêtre d'information au clic
+        marker.setInfoWindow(new CustomInfoWindow(mapView));
+
+        // Ajouter le marqueur à la carte
         mapView.getOverlays().add(marker);
-        mapView.invalidate(); // Re-dessiner la carte
+        mapView.invalidate();
     }
+
     private void zoomTo(GeoPoint point) {
         mapView.getController().setZoom(18.0);
         mapView.getController().setCenter(point);
@@ -364,41 +458,40 @@ public class MainActivity extends AppCompatActivity {
         MenuInflater inflater = popupMenu.getMenuInflater();
         inflater.inflate(R.menu.context_menu, popupMenu.getMenu());
 
-        // Gérer les clics sur les options du menu
         popupMenu.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.Trajet) {
-                addMarker(p); // Ajouter un marqueur à l'endroit du clic long
-                return true;
+            String title;
+            String description = "Événement signalé"; // Par défaut
+            int iconRes;
 
+            if (item.getItemId() == R.id.Trajet) {
+                title = "Trajet";
+                iconRes = R.drawable.panneau_2; // Remplace par ton icône
+                addMarker(p, title, description, iconRes);
+                return true;
             }
             if (item.getItemId() == R.id.Route) {
-                addMarker(p); // Ajouter un marqueur à l'endroit du clic long
-                return true;
-            }else if (item.getItemId() == R.id.Travaux) {
-                zoomTo(p); // Zoomer sur le point
+                title = "Route fermée";
+                iconRes = R.drawable.accident; // Remplace par ton icône
+                addMarker(p, title, description, iconRes);
                 return true;
             }
-            return false;
+            if (item.getItemId() == R.id.Travaux) {
+                title = "Travaux en cours";
+                iconRes = R.drawable.construction; // Remplace par ton icône
+                addMarker(p, title, description, iconRes);
+                return true;
+            }
+            if (item.getItemId() == R.id.Reset) {
+                resetMap(); // Réinitialiser la carte
+                return true;
+            }
 
+            return false;
         });
+
 
         popupMenu.show();
     }
-    /*public boolean onContextItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.item12) {
-            GeoPoint point = new GeoPoint(48.400002, -4.48333);
-            Marker marker = new Marker(mapView);
-            marker.setPosition(point);
-            marker.setTitle("Nouveau marqueur");
-            mapView.getOverlays().add(marker);
-            mapView.invalidate();
-            return true;
-        } else if (id == R.id.item22) {
-            mapView.getController().zoomOut();
-            return true;
-        } else {
-            return super.onContextItemSelected(item);
-        }*/
+
     }
 
