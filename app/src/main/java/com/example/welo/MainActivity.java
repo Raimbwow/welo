@@ -2,10 +2,17 @@ package com.example.welo;
 
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import com.example.welo.R;
 
 import org.osmdroid.api.IGeoPoint;
+import org.osmdroid.events.DelayedMapListener;
+import org.osmdroid.events.MapListener;
+import org.osmdroid.events.ScrollEvent;
+import org.osmdroid.events.ZoomEvent;
 import org.osmdroid.views.overlay.infowindow.InfoWindow;
 import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -15,10 +22,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
 
 import android.widget.EditText;
 import android.content.pm.PackageManager;
@@ -70,18 +73,8 @@ import org.osmdroid.views.overlay.Marker;
 
 
 import org.osmdroid.util.GeoPoint;
-import org.osmdroid.views.MapView;
-import org.osmdroid.views.Projection;
-import org.osmdroid.views.overlay.ItemizedIconOverlay;
-import org.osmdroid.views.overlay.ItemizedOverlayWithFocus;
-import org.osmdroid.views.overlay.MapEventsOverlay;
-import org.osmdroid.views.overlay.Marker;
 
-import com.graphhopper.GHRequest;
-import com.graphhopper.GHResponse;
-import com.graphhopper.GraphHopper;
-import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.util.shapes.GHPoint;
+
 
 import java.io.File;
 import org.osmdroid.views.overlay.OverlayItem;
@@ -92,20 +85,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import com.example.welo.databinding.ActivityMainBinding;
 
-import org.osmdroid.bonuspack.clustering.RadiusMarkerClusterer;
-import org.osmdroid.bonuspack.clustering.StaticCluster;
-import org.osmdroid.bonuspack.kml.KmlDocument;
-import org.osmdroid.bonuspack.kml.KmlFeature;
-import org.osmdroid.bonuspack.kml.KmlFolder;
-import org.osmdroid.bonuspack.kml.KmlLineString;
-import org.osmdroid.bonuspack.kml.KmlPlacemark;
-import org.osmdroid.bonuspack.kml.KmlPoint;
-import org.osmdroid.bonuspack.kml.KmlPolygon;
-import org.osmdroid.bonuspack.kml.KmlTrack;
-import org.osmdroid.bonuspack.kml.Style;
-import org.osmdroid.bonuspack.location.NominatimPOIProvider;
-import org.osmdroid.bonuspack.location.OverpassAPIProvider;
-import org.osmdroid.bonuspack.location.POI;
+
 import org.osmdroid.bonuspack.routing.OSRMRoadManager;
 import org.osmdroid.bonuspack.routing.Road;
 import org.osmdroid.bonuspack.routing.RoadManager;
@@ -120,15 +100,30 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PERMISSIONS = 1;
 
     ArrayList<OverlayItem> items = new ArrayList<>();
-    private int selectedIconRes = 0; // Stocke l'icône choisie par l'utilisateur
+
     private final int selectedIconIndex = -1; // Index du type d'événement sélectionné
     private long longPressStartTime = 0;
-    public class CustomInfoWindow extends MarkerInfoWindow {
+    public static class CustomInfoWindow extends MarkerInfoWindow {
         public CustomInfoWindow(MapView mapView) {
             //super(org.osmdroid.library.R.layout.bonuspack_bubble, mapView);
             super(R.layout.custom_info_window, mapView);
         }
     }
+    public Drawable resizeDrawable(Context context, int resId, int width, int height) {
+        Drawable drawable = ContextCompat.getDrawable(context, resId);
+
+        if (drawable != null) {
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            drawable.draw(canvas);
+            return new BitmapDrawable(context.getResources(), bitmap);
+        } else {
+            Log.e("DrawableError", "Impossible de charger l'icône " + resId);
+            return null;
+        }
+    }
+
     private void showAddMarkerDialog(GeoPoint point) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Ajouter un événement");
@@ -142,23 +137,39 @@ public class MainActivity extends AppCompatActivity {
         String[] eventTypes = {"Accident", "Travaux", "Radar"};
         Integer[] eventIcons = {R.drawable.accident, R.drawable.construction, R.drawable.panneau_2};
 
+        // Variable pour stocker l'index du type sélectionné
+        final int[] selectedIndex = {-1}; // -1 signifie qu'aucun choix n'a été fait
+
         builder.setSingleChoiceItems(eventTypes, -1, (dialog, which) -> {
-            selectedIconRes = eventIcons[which]; // Sauvegarde l'icône choisie
+            selectedIndex[0] = which; // Sauvegarde l'index sélectionné
         });
 
         builder.setPositiveButton("Ajouter", (dialog, which) -> {
-            String description = input.getText().toString();
-            if (!description.isEmpty() && selectedIconRes != 0) {
-                addMarker(point, eventTypes[selectedIconIndex], description, selectedIconRes);
-            } else {
-                Toast.makeText(this, "Veuillez entrer une description et choisir un type", Toast.LENGTH_SHORT).show();
+            String description = input.getText().toString().trim();
+
+            if (selectedIndex[0] == -1) { // Vérifie si l'utilisateur a sélectionné un type
+                Toast.makeText(this, "Veuillez choisir un type d'événement", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            if (description.isEmpty()) { // Vérifie si la description est vide
+                Toast.makeText(this, "Veuillez entrer une description", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Récupérer les valeurs sélectionnées
+            String selectedTitle = eventTypes[selectedIndex[0]];
+            int selectedIconRes = eventIcons[selectedIndex[0]];
+
+            // Ajouter le marqueur
+            addMarker(point, selectedTitle, description, selectedIconRes);
         });
 
         builder.setNegativeButton("Annuler", (dialog, which) -> dialog.cancel());
 
         builder.show();
     }
+
 
     private void resetMap() {
         // Récupérer les overlays actuels
@@ -293,6 +304,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
+
         mapView.getOverlayManager().add(events);
 
 
@@ -320,9 +332,20 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
             }
-            return false;
-        });
 
+            return false;
+        });mapView.addMapListener(new DelayedMapListener(new MapListener() {
+            @Override
+            public boolean onScroll(ScrollEvent event) {
+                return false; // Pas besoin de réagir au scroll
+            }
+
+            @Override
+            public boolean onZoom(ZoomEvent event) {
+                updateMarkerIcons();
+                return true;
+            }
+        }, 100)); // Délai pour éviter trop d'appels en rafale
 
     };
     // Gérer les événements de carte (tap et long press)
@@ -347,6 +370,22 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+    public void updateMarkerIcons() {
+        int zoomLevel = (int) Math.round(mapView.getZoomLevelDouble());
+        int iconSize = Math.max(50, zoomLevel * 5);
+
+        for (Overlay overlay : mapView.getOverlays()) {
+            if (overlay instanceof Marker) {
+                Marker marker = (Marker) overlay;
+                Drawable resizedIcon = resizeDrawable(mapView.getContext(), R.drawable.panneau, iconSize, iconSize);
+                if (resizedIcon != null) {
+                    marker.setIcon(resizedIcon);
+                }
+            }
+        }
+        mapView.invalidate(); // Rafraîchir la carte
+    }
+
     public void calculateRoute(MapView mapView) {
         ArrayList<GeoPoint> waypoints = new ArrayList<>();
         waypoints.add(new GeoPoint(48.858844, 2.294351)); // Tour Eiffel
@@ -444,6 +483,12 @@ public class MainActivity extends AppCompatActivity {
 
         // Ajouter le marqueur à la carte
         mapView.getOverlays().add(marker);
+        int zoomLevel = (int) mapView.getZoomLevelDouble();
+        int iconSize = Math.max(50, zoomLevel * 5); // Ajuste cette formule selon tes besoins
+
+
+
+
         mapView.invalidate();
     }
 
