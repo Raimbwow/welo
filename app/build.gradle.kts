@@ -43,7 +43,7 @@ dependencies {
     implementation(libs.navigation.fragment)
     implementation(libs.navigation.ui)
     implementation("org.osmdroid:osmdroid-android:6.1.20")
-
+    implementation ("com.google.android.libraries.places:places:3.3.0")
     // https://mvnrepository.com/artifact/org.osmdroid/osmdroid-shape
     implementation("org.osmdroid:osmdroid-shape:6.1.20")
     implementation("com.caverock:androidsvg:1.4")
@@ -55,8 +55,10 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("com.squareup.okhttp3:okhttp:4.7.2")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+
 }
