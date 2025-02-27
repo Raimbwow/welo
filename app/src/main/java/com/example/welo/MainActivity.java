@@ -1,35 +1,16 @@
 package com.example.welo;
-import static com.google.android.gms.maps.CameraUpdateFactory.zoomTo;
-
-
-import com.example.welo.R;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 
-import com.example.welo.ui.home.HomeFragment;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
-
+import com.google.android.gms.location.FusedLocationProviderClient;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
-
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
-
 
 import android.content.pm.PackageManager;
-import com.example.welo.R;
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
-import android.os.Bundle;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -37,10 +18,11 @@ import android.view.MenuItem;
 
 
 import androidx.core.app.ActivityCompat;
-import androidx.viewbinding.ViewBinding;
-
+import org.osmdroid.bonuspack.routing.OSRMRoadManager;
+import org.osmdroid.bonuspack.routing.Road;
+import org.osmdroid.bonuspack.routing.RoadManager;
+import org.osmdroid.bonuspack.routing.RoadNode;
 import org.osmdroid.views.overlay.GroundOverlay;
-import org.osmdroid.views.overlay.GroundOverlay4;
 import org.osmdroid.views.overlay.MapEventsOverlay;
 
 import org.osmdroid.config.Configuration;
@@ -50,72 +32,33 @@ import org.osmdroid.views.MapView;
 
 import java.util.ArrayList;
 
-
-import android.Manifest;
 import android.view.ContextMenu;
-import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 
-
 import androidx.annotation.NonNull;
 
-
-
 import org.osmdroid.util.GeoPoint;
-import org.osmdroid.views.MapView;
-import org.osmdroid.views.Projection;
-import org.osmdroid.views.overlay.ItemizedIconOverlay;
-import org.osmdroid.views.overlay.ItemizedOverlayWithFocus;
-import org.osmdroid.views.overlay.MapEventsOverlay;
 import org.osmdroid.views.overlay.Marker;
-
-import com.graphhopper.GHRequest;
-import com.graphhopper.GHResponse;
-import com.graphhopper.GraphHopper;
-import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.util.shapes.GHPoint;
 
 import java.io.File;
 import org.osmdroid.views.overlay.OverlayItem;
 import org.osmdroid.views.overlay.Polygon;
+import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import com.example.welo.databinding.ActivityMainBinding;
 
-import org.osmdroid.bonuspack.clustering.RadiusMarkerClusterer;
-import org.osmdroid.bonuspack.clustering.StaticCluster;
-import org.osmdroid.bonuspack.kml.KmlDocument;
-import org.osmdroid.bonuspack.kml.KmlFeature;
-import org.osmdroid.bonuspack.kml.KmlFolder;
-import org.osmdroid.bonuspack.kml.KmlLineString;
-import org.osmdroid.bonuspack.kml.KmlPlacemark;
-import org.osmdroid.bonuspack.kml.KmlPoint;
-import org.osmdroid.bonuspack.kml.KmlPolygon;
-import org.osmdroid.bonuspack.kml.KmlTrack;
-import org.osmdroid.bonuspack.kml.Style;
-import org.osmdroid.bonuspack.location.NominatimPOIProvider;
-import org.osmdroid.bonuspack.location.OverpassAPIProvider;
-import org.osmdroid.bonuspack.location.POI;
-import org.osmdroid.bonuspack.routing.OSRMRoadManager;
-import org.osmdroid.bonuspack.routing.Road;
-import org.osmdroid.bonuspack.routing.RoadManager;
-import org.osmdroid.bonuspack.routing.RoadNode;
-import org.osmdroid.bonuspack.utils.BonusPackHelper;
-import org.osmdroid.views.overlay.Polyline;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
     private MapView mapView = null;
 
     private static final int REQUEST_PERMISSIONS = 1;
+
+    private FusedLocationProviderClient fusedLocationClient;
 
     ArrayList<OverlayItem> items = new ArrayList<>();
 
@@ -154,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
         mapView.setTileSource(TileSourceFactory.OpenTopo);
         mapView.setBuiltInZoomControls(true);
         mapView.setMultiTouchControls(true);
-  
+
         CompassOverlay mCompassOverlay = new CompassOverlay(this, new InternalCompassOrientationProvider(this), mapView);
         mCompassOverlay.enableCompass();
         mapView.getOverlays().add(mCompassOverlay);
@@ -176,9 +119,17 @@ public class MainActivity extends AppCompatActivity {
         // IMPORTANT PROBLEME A REGLER
         //*********************************************************//
          requestPermissionsIfNecessary(new String []{
-                Manifest.permission.ACCESS_FINE_LOCATION,
                  Manifest.permission.WRITE_EXTERNAL_STORAGE}
         );
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Demande la permission à l'utilisateur
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST_CODE);
+        }
+
         //*********************************************************************
 
             //NavigationUI.setupWithNavController(binding.navView, navController);
@@ -186,8 +137,6 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<OverlayItem> items = new ArrayList<>();
             items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48333))); // Lat/Lon decimal degrees
             items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.48)));
-            // Ajoutez un écouteur de clic sur la carte
-            calculateRoute(mapView);
 
         MapEventsOverlay events = new MapEventsOverlay(new MapEventsReceiver() {
             @Override
@@ -195,6 +144,7 @@ public class MainActivity extends AppCompatActivity {
 
                 Toast.makeText(getApplicationContext(), "Tap on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
                 items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.40)));
+                calculateRoute(mapView, p);
                 /*Polygon circle = new Polygon();
                 circle.setPoints(Polygon.pointsAsCircle(p, 200.0));
                 mapView.getOverlays().add(circle);
@@ -216,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
                 map.getOverlays().add(myGroundOverlay);*/
                 Polygon circle = new Polygon();
                 circle.setPoints(Polygon.pointsAsCircle(p, 2000.0));
-                mapView.getOverlays().add(circle);
+                //mapView.getOverlays().add(circle);
                 mapView.invalidate();
 
                 showMenu(p);
@@ -257,10 +207,48 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-    public void calculateRoute(MapView mapView) {
+
+    private void requestPermissionsIfNecessary(String[] permissions) {
+        ArrayList<String> permissionsToRequest = new ArrayList<>();
+        for (String permission : permissions) {
+            if (ContextCompat.checkSelfPermission(this, permission)
+                    != PackageManager.PERMISSION_GRANTED) {
+                // Permission is not granted
+                permissionsToRequest.add(permission);
+            }
+        }
+        if (!permissionsToRequest.isEmpty()) {
+            int REQUEST_PERMISSIONS_REQUEST_CODE = 10;
+            ActivityCompat.requestPermissions(
+                    this,
+                    permissionsToRequest.toArray(new String[0]),
+                    REQUEST_PERMISSIONS_REQUEST_CODE);
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.INTERNET}, 1);
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    public void calculateRoute(MapView mapView, GeoPoint p) {
         ArrayList<GeoPoint> waypoints = new ArrayList<>();
-        waypoints.add(new GeoPoint(48.858844, 2.294351)); // Tour Eiffel
-        waypoints.add(new GeoPoint(48.856613, 2.352222)); // Notre-Dame
+
+
+        /*fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        waypoints.add(new GeoPoint(location.getLatitude(), location.getLongitude()));
+
+                        // Got last known location. In some rare situations this can be null.
+                        if (location != null) {
+                            // Logic to handle location object
+                        }
+                    }
+                });*/
+        //localisation.requestLocationUpdates();
+        waypoints.add(new GeoPoint(48.39, -4.48));
+        waypoints.add(new GeoPoint(p.getLatitude(), p.getLongitude()));
 
         OSRMRoadManager roadManager = new OSRMRoadManager(this, "welo/0 (Linux; Android 12; Pixel 5)");
         roadManager.setMean(OSRMRoadManager.MEAN_BY_BIKE); // Mode velo
@@ -287,26 +275,8 @@ public class MainActivity extends AppCompatActivity {
         mapView.invalidate(); // Actualise la carte
     }
 
-    private void requestPermissionsIfNecessary(String[] permissions) {
-        ArrayList<String> permissionsToRequest = new ArrayList<>();
-        for (String permission : permissions) {
-            if (ContextCompat.checkSelfPermission(this, permission)
-                    != PackageManager.PERMISSION_GRANTED) {
-                // Permission is not granted
-                permissionsToRequest.add(permission);
-            }
-        }
-        if (!permissionsToRequest.isEmpty()) {
-            int REQUEST_PERMISSIONS_REQUEST_CODE = 10;
-            ActivityCompat.requestPermissions(
-                    this,
-                    permissionsToRequest.toArray(new String[0]),
-                    REQUEST_PERMISSIONS_REQUEST_CODE);
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.INTERNET}, 1);
-        }
-    }
+
+
 
     // Gérer le cycle de vie pour libérer les ressources liées à la carte
     @Override

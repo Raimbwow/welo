@@ -2,9 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+
 android {
     namespace = "com.example.welo"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.welo"
@@ -55,6 +56,8 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("com.squareup.okhttp3:okhttp:4.7.2")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
+    //API Google pour la localisation
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
