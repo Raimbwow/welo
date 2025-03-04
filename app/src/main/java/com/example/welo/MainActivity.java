@@ -6,44 +6,42 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
-import com.example.welo.R;
+
 
 import org.osmdroid.api.IGeoPoint;
 import org.osmdroid.events.DelayedMapListener;
 import org.osmdroid.events.MapListener;
 import org.osmdroid.events.ScrollEvent;
 import org.osmdroid.events.ZoomEvent;
-import org.osmdroid.views.overlay.infowindow.InfoWindow;
+
+import org.osmdroid.views.overlay.GroundOverlay;
 import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
+
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
+
 
 
 import android.widget.EditText;
 import android.content.pm.PackageManager;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
+
 import android.content.Context;
-import android.content.pm.PackageManager;
+
 import android.graphics.drawable.Drawable;
-import android.os.Bundle;
+
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.MenuItem;
+
 
 import java.util.List;
 import java.util.ArrayList;
 
 import androidx.core.app.ActivityCompat;
-import androidx.viewbinding.ViewBinding;
-
-import org.osmdroid.views.overlay.GroundOverlay;
 
 import org.osmdroid.views.overlay.MapEventsOverlay;
 
@@ -52,17 +50,17 @@ import org.osmdroid.events.MapEventsReceiver;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.views.MapView;
 
-import java.util.ArrayList;
 
 
-import android.Manifest;
+
+
 import android.view.ContextMenu;
-import android.view.Menu;
+
 import android.view.MenuInflater;
-import android.view.MenuItem;
+
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.AdapterView;
+
 import android.widget.PopupMenu;
 import android.widget.Toast;
 
@@ -78,19 +76,16 @@ import org.osmdroid.util.GeoPoint;
 
 import java.io.File;
 import org.osmdroid.views.overlay.OverlayItem;
-import org.osmdroid.views.overlay.Polygon;
+
 import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import com.example.welo.databinding.ActivityMainBinding;
 
 
 import org.osmdroid.bonuspack.routing.OSRMRoadManager;
 import org.osmdroid.bonuspack.routing.Road;
 import org.osmdroid.bonuspack.routing.RoadManager;
 import org.osmdroid.bonuspack.routing.RoadNode;
-import org.osmdroid.bonuspack.utils.BonusPackHelper;
+
 import org.osmdroid.views.overlay.Polyline;
 
 public class MainActivity extends AppCompatActivity {
@@ -103,15 +98,14 @@ public class MainActivity extends AppCompatActivity {
 
     private final int selectedIconIndex = -1; // Index du type d'événement sélectionné
     private long longPressStartTime = 0;
+
     public static class CustomInfoWindow extends MarkerInfoWindow {
         public CustomInfoWindow(MapView mapView) {
             //super(org.osmdroid.library.R.layout.bonuspack_bubble, mapView);
             super(R.layout.custom_info_window, mapView);
         }
     }
-    public Drawable resizeDrawable(Context context, int resId, int width, int height) {
-        Drawable drawable = ContextCompat.getDrawable(context, resId);
-
+    public Drawable resizeDrawable(Context context, Drawable drawable, int width, int height) {
         if (drawable != null) {
             Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
@@ -119,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
             drawable.draw(canvas);
             return new BitmapDrawable(context.getResources(), bitmap);
         } else {
-            Log.e("DrawableError", "Impossible de charger l'icône " + resId);
+            Log.e("DrawableError", "Drawable est null");
             return null;
         }
     }
@@ -266,6 +260,7 @@ public class MainActivity extends AppCompatActivity {
         MapEventsOverlay events = new MapEventsOverlay(new MapEventsReceiver() {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
+
 // Affiche un Toast avec les coordonnées
                 Toast.makeText(getApplicationContext(), "Tap sur (" + p.getLatitude() + ", " + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
 
@@ -289,17 +284,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean longPressHelper(GeoPoint p) {
-                GeoPoint click = p;
-                Toast.makeText(getApplicationContext(), "Long press on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
-                GroundOverlay myGroundOverlay = new GroundOverlay();
-                /*myGroundOverlay.setPosition(click,p);
-                myGroundOverlay.setImage(getResources().getDrawable(R.drawable.ic_launcher).mutate());
-                myGroundOverlay.set(2000.0f);
-                map.getOverlays().add(myGroundOverlay);*/
-
-                mapView.invalidate();
-
-                showMenu(p);
                 return false;
             }
 
@@ -315,7 +299,9 @@ public class MainActivity extends AppCompatActivity {
         registerForContextMenu(mapView);
 
 
-
+        /*Quand tu restes appuyé plus de 500 ms, ça déclenche le long press.
+Ça récupère les coordonnées du point appuyé.
+Puis ça appelle showAddMarkerDialog(point) qui ouvre le dialogue d'ajout d'événement avec choix du type d'événement et description.*/
 
         mapView.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
@@ -342,7 +328,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean onZoom(ZoomEvent event) {
-                updateMarkerIcons();
+                //Adapte l'icone à la taille de la carte (et pas du zoom associé)
+                //updateMarkerIcons();
                 return true;
             }
         }, 100)); // Délai pour éviter trop d'appels en rafale
@@ -370,21 +357,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-    public void updateMarkerIcons() {
-        int zoomLevel = (int) Math.round(mapView.getZoomLevelDouble());
-        int iconSize = Math.max(50, zoomLevel * 5);
 
-        for (Overlay overlay : mapView.getOverlays()) {
-            if (overlay instanceof Marker) {
-                Marker marker = (Marker) overlay;
-                Drawable resizedIcon = resizeDrawable(mapView.getContext(), R.drawable.panneau, iconSize, iconSize);
-                if (resizedIcon != null) {
-                    marker.setIcon(resizedIcon);
-                }
-            }
-        }
-        mapView.invalidate(); // Rafraîchir la carte
-    }
+
 
     public void calculateRoute(MapView mapView) {
         ArrayList<GeoPoint> waypoints = new ArrayList<>();
@@ -475,16 +449,15 @@ public class MainActivity extends AppCompatActivity {
 
         // Définir une icône personnalisée
         @SuppressLint("UseCompatLoadingForDrawables")
-        Drawable icon = getResources().getDrawable(iconRes, null);
-        marker.setIcon(icon);
 
+        Drawable icon = getResources().getDrawable(iconRes, null);
+        icon = resizeDrawable(this, icon, 80, 80); // Par exemple, taille constante 50x50
+        marker.setIcon(icon);
         // Ajouter une fenêtre d'information au clic
         marker.setInfoWindow(new CustomInfoWindow(mapView));
 
         // Ajouter le marqueur à la carte
         mapView.getOverlays().add(marker);
-        int zoomLevel = (int) mapView.getZoomLevelDouble();
-        int iconSize = Math.max(50, zoomLevel * 5); // Ajuste cette formule selon tes besoins
 
 
 
@@ -496,47 +469,8 @@ public class MainActivity extends AppCompatActivity {
         mapView.getController().setZoom(18.0);
         mapView.getController().setCenter(point);
     }
-    @SuppressLint("NonConstantResourceId")
-    private void showMenu(GeoPoint p) {
-        // Créer un PopupMenu
-        PopupMenu popupMenu = new PopupMenu(this, findViewById(R.id.map));
-        MenuInflater inflater = popupMenu.getMenuInflater();
-        inflater.inflate(R.menu.context_menu, popupMenu.getMenu());
-
-        popupMenu.setOnMenuItemClickListener(item -> {
-            String title;
-            String description = "Événement signalé"; // Par défaut
-            int iconRes;
-
-            if (item.getItemId() == R.id.Trajet) {
-                title = "Trajet";
-                iconRes = R.drawable.panneau_2; // Remplace par ton icône
-                addMarker(p, title, description, iconRes);
-                return true;
-            }
-            if (item.getItemId() == R.id.Route) {
-                title = "Route fermée";
-                iconRes = R.drawable.accident; // Remplace par ton icône
-                addMarker(p, title, description, iconRes);
-                return true;
-            }
-            if (item.getItemId() == R.id.Travaux) {
-                title = "Travaux en cours";
-                iconRes = R.drawable.construction; // Remplace par ton icône
-                addMarker(p, title, description, iconRes);
-                return true;
-            }
-            if (item.getItemId() == R.id.Reset) {
-                resetMap(); // Réinitialiser la carte
-                return true;
-            }
-
-            return false;
-        });
-
-
-        popupMenu.show();
-    }
 
     }
+
+
 
