@@ -1,14 +1,31 @@
 package com.example.welo;
-import static com.google.android.gms.maps.CameraUpdateFactory.zoomTo;
 
-
-import com.example.welo.R;
-
+import android.app.AlertDialog;
 import android.annotation.SuppressLint;
+
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
+import android.os.Bundle;
+
+
+import org.osmdroid.api.IGeoPoint;
+import org.osmdroid.events.DelayedMapListener;
+import org.osmdroid.events.MapListener;
+import org.osmdroid.events.ScrollEvent;
+import org.osmdroid.events.ZoomEvent;
+
+import org.osmdroid.views.overlay.GroundOverlay;
+import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow;
+
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import androidx.core.content.ContextCompat;
+
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
-import android.os.Bundle;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -17,21 +34,26 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.Priority;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-
+import android.widget.EditText;
 import android.content.pm.PackageManager;
+
 import android.Manifest;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Looper;
+
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.MenuItem;
+
+
+
+import java.util.List;
+import java.util.ArrayList;
 
 import androidx.core.app.ActivityCompat;
 import org.osmdroid.util.BoundingBox;
+
 import org.osmdroid.views.overlay.MapEventsOverlay;
 
 import org.osmdroid.config.Configuration;
@@ -45,17 +67,20 @@ import java.util.ArrayList;
 import android.view.ContextMenu;
 import android.view.MenuInflater;
 import android.view.View;
+
 import android.widget.PopupMenu;
 import androidx.appcompat.widget.SearchView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import org.osmdroid.views.overlay.Overlay;
+import org.osmdroid.views.overlay.Marker;
 
 import org.osmdroid.util.GeoPoint;
-import org.osmdroid.views.overlay.Marker;
 
 import java.io.File;
 import org.osmdroid.views.overlay.OverlayItem;
+
 import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 import java.util.List;
@@ -65,6 +90,7 @@ import org.osmdroid.bonuspack.routing.OSRMRoadManager;
 import org.osmdroid.bonuspack.routing.Road;
 import org.osmdroid.bonuspack.routing.RoadManager;
 import org.osmdroid.bonuspack.routing.RoadNode;
+
 import org.osmdroid.views.overlay.Polyline;
 
 public class MainActivity extends AppCompatActivity {
@@ -75,6 +101,97 @@ public class MainActivity extends AppCompatActivity {
     private LocationCallback locationCallback;
     private static final int REQUEST_PERMISSIONS = 1;
     ArrayList<OverlayItem> items = new ArrayList<>();
+
+    private final int selectedIconIndex = -1; // Index du type d'événement sélectionné
+    private long longPressStartTime = 0;
+
+    public static class CustomInfoWindow extends MarkerInfoWindow {
+        public CustomInfoWindow(MapView mapView) {
+            //super(org.osmdroid.library.R.layout.bonuspack_bubble, mapView);
+            super(R.layout.custom_info_window, mapView);
+        }
+    }
+    public Drawable resizeDrawable(Context context, Drawable drawable, int width, int height) {
+        if (drawable != null) {
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            drawable.draw(canvas);
+            return new BitmapDrawable(context.getResources(), bitmap);
+        } else {
+            Log.e("DrawableError", "Drawable est null");
+            return null;
+        }
+    }
+
+    private void showAddMarkerDialog(GeoPoint point) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Ajouter un événement");
+
+        // Ajouter un champ de texte pour la description
+        final EditText input = new EditText(this);
+        input.setHint("Description de l'événement");
+        builder.setView(input);
+
+        // Liste des types d'événements
+        String[] eventTypes = {"Accident", "Travaux", "Radar"};
+        Integer[] eventIcons = {R.drawable.accident, R.drawable.construction, R.drawable.panneau_2};
+
+        // Variable pour stocker l'index du type sélectionné
+        final int[] selectedIndex = {-1}; // -1 signifie qu'aucun choix n'a été fait
+
+        builder.setSingleChoiceItems(eventTypes, -1, (dialog, which) -> {
+            selectedIndex[0] = which; // Sauvegarde l'index sélectionné
+        });
+
+        builder.setPositiveButton("Ajouter", (dialog, which) -> {
+            String description = input.getText().toString().trim();
+
+            if (selectedIndex[0] == -1) { // Vérifie si l'utilisateur a sélectionné un type
+                Toast.makeText(this, "Veuillez choisir un type d'événement", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (description.isEmpty()) { // Vérifie si la description est vide
+                Toast.makeText(this, "Veuillez entrer une description", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Récupérer les valeurs sélectionnées
+            String selectedTitle = eventTypes[selectedIndex[0]];
+            int selectedIconRes = eventIcons[selectedIndex[0]];
+
+            // Ajouter le marqueur
+            addMarker(point, selectedTitle, description, selectedIconRes);
+        });
+
+        builder.setNegativeButton("Annuler", (dialog, which) -> dialog.cancel());
+
+        builder.show();
+    }
+
+
+    private void resetMap() {
+        // Récupérer les overlays actuels
+        List<Overlay> overlays = mapView.getOverlays();
+
+        // Créer une nouvelle liste qui ne contiendra que les éléments interactifs
+        List<Overlay> toKeep = new ArrayList<>();
+
+        for (Overlay overlay : overlays) {
+            // Vérifier si l'overlay est un gestionnaire d'interactions (ex: écouteur de clics)
+            if (overlay instanceof MapEventsOverlay) {
+                toKeep.add(overlay); // Ne pas supprimer les écouteurs d'événements
+            }
+        }
+
+        // Remplacer les overlays actuels par ceux qu'on garde
+        mapView.getOverlays().clear();
+        mapView.getOverlays().addAll(toKeep);
+
+        // Rafraîchir la carte
+        mapView.invalidate();
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -172,9 +289,25 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean singleTapConfirmedHelper(GeoPoint p) {
 
-                Toast.makeText(getApplicationContext(), "Tap on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
-                items.add(new OverlayItem("Title", "Description", new GeoPoint(48.400002, -4.40)));
+// Affiche un Toast avec les coordonnées
+                Toast.makeText(getApplicationContext(), "Tap sur (" + p.getLatitude() + ", " + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
+
+                // Création d’un OverlayItem
+                OverlayItem overlayItem = new OverlayItem(
+                        "Point tapé",
+                        "Coordonnées : " + p.getLatitude() + ", " + p.getLongitude(),
+                        p
+                );
+
+                // Ajout d'une icône personnalisée pour le marqueur
+                overlayItem.setMarker(ContextCompat.getDrawable(getApplicationContext(), R.drawable.panneau_2));
+
+                // Ajout à la liste des items et rafraîchissement
+                items.add(overlayItem);
+                mapView.invalidate();
+
                 return true;
+
             }
 
             @Override
@@ -183,13 +316,51 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(getApplicationContext(), "Long press on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
                 mapView.invalidate();
                 showMenu(p);
+
                 return false;
             }
         });
+
         mapView.getOverlayManager().add(events);
         // Supposons que vous avez une ListView ou une autre vue sur laquelle vous voulez le menu contextuel
         registerForContextMenu(mapView);
-        };
+        /*Quand tu restes appuyé plus de 500 ms, ça déclenche le long press.
+Ça récupère les coordonnées du point appuyé.
+Puis ça appelle showAddMarkerDialog(point) qui ouvre le dialogue d'ajout d'événement avec choix du type d'événement et description.*/
+
+        mapView.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    longPressStartTime = System.currentTimeMillis();
+                    break;
+
+                case MotionEvent.ACTION_UP:
+                    long pressDuration = System.currentTimeMillis() - longPressStartTime;
+                    if (pressDuration > 500) { // Seuil pour un long press (500ms)
+                        IGeoPoint geoPoint = mapView.getProjection().fromPixels((int) event.getX(), (int) event.getY());
+                        GeoPoint point = new GeoPoint(geoPoint.getLatitude(), geoPoint.getLongitude());
+                        showAddMarkerDialog(point);
+                    }
+                    break;
+            }
+
+            return false;
+        });mapView.addMapListener(new DelayedMapListener(new MapListener() {
+            @Override
+            public boolean onScroll(ScrollEvent event) {
+                return false; // Pas besoin de réagir au scroll
+            }
+
+            @Override
+            public boolean onZoom(ZoomEvent event) {
+                //Adapte l'icone à la taille de la carte (et pas du zoom associé)
+                //updateMarkerIcons();
+                return true;
+            }
+        }, 100)); // Délai pour éviter trop d'appels en rafale
+
+    };
+     
     // Gérer les événements de carte (tap et long press)
     // Gestion des résultats des demandes de permissions
     @Override
@@ -258,6 +429,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
     }
+
+    public void calculateRoute(MapView mapView) {
+        ArrayList<GeoPoint> waypoints = new ArrayList<>();
+        waypoints.add(new GeoPoint(48.858844, 2.294351)); // Tour Eiffel
+        waypoints.add(new GeoPoint(48.856613, 2.352222)); // Notre-Dame
+
 
     private void startLocationUpdates() {
         LocationRequest locationRequest = LocationRequest.create();
@@ -407,13 +584,29 @@ public class MainActivity extends AppCompatActivity {
             inflater.inflate(R.menu.context_menu, menu); // Charger le fichier XML
     }}
 
-    private void addMarker(GeoPoint point) {
+    private void addMarker(GeoPoint point, String title, String description, int iconRes) {
         Marker marker = new Marker(mapView);
         marker.setPosition(point);
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-        marker.setTitle("Marqueur ici");
+        marker.setTitle(title);
+        marker.setSnippet(description); // Description de l'événement
+
+        // Définir une icône personnalisée
+        @SuppressLint("UseCompatLoadingForDrawables")
+
+        Drawable icon = getResources().getDrawable(iconRes, null);
+        icon = resizeDrawable(this, icon, 80, 80); // Par exemple, taille constante 50x50
+        marker.setIcon(icon);
+        // Ajouter une fenêtre d'information au clic
+        marker.setInfoWindow(new CustomInfoWindow(mapView));
+
+        // Ajouter le marqueur à la carte
         mapView.getOverlays().add(marker);
-        mapView.invalidate(); // Re-dessiner la carte
+
+
+
+
+        mapView.invalidate();
     }
 
     private void zoomTo(GeoPoint point) {
@@ -460,3 +653,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     }
+
+
+
