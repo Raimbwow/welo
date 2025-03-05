@@ -28,12 +28,12 @@
                 android:id="@+id/searchView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/black"
+                android:background="@android:color/white"
                 android:iconifiedByDefault="true"
                 android:queryHint="Rechercher un lieu..."
                 android:scrollbarStyle="outsideOverlay"
-                android:textColor="@color/red"
-                android:textColorHint="@color/red"
+                android:editTextColor="@android:color/black"
+                android:textColorHint="@android:color/black"
                 android:visibility="visible"
                 tools:visibility="visible" />
         </LinearLayout>
