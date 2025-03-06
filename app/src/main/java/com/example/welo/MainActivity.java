@@ -34,6 +34,8 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.Priority;
 
+import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.widget.EditText;
 import android.content.pm.PackageManager;
 
@@ -315,8 +317,6 @@ public class MainActivity extends AppCompatActivity {
                 GeoPoint click = p;
                 Toast.makeText(getApplicationContext(), "Long press on (" + p.getLatitude() + "," + p.getLongitude() + ")", Toast.LENGTH_SHORT).show();
                 mapView.invalidate();
-                showMenu(p);
-
                 return false;
             }
         });
@@ -430,12 +430,6 @@ Puis ça appelle showAddMarkerDialog(point) qui ouvre le dialogue d'ajout d'év�
                 });
     }
 
-    public void calculateRoute(MapView mapView) {
-        ArrayList<GeoPoint> waypoints = new ArrayList<>();
-        waypoints.add(new GeoPoint(48.858844, 2.294351)); // Tour Eiffel
-        waypoints.add(new GeoPoint(48.856613, 2.352222)); // Notre-Dame
-
-
     private void startLocationUpdates() {
         LocationRequest locationRequest = LocationRequest.create();
         locationRequest.setInterval(5000); // Mise à jour toutes les 5 secondes
@@ -447,6 +441,7 @@ Puis ça appelle showAddMarkerDialog(point) qui ouvre le dialogue d'ajout d'év�
             requestPermissionsIfNecessary(new String[]{Manifest.permission.ACCESS_FINE_LOCATION});
         }
     }
+
 
     private void updateUserLocation(GeoPoint userLocation) {
         if (mapView == null) return; // Vérifie que la carte est bien initialisée
@@ -614,26 +609,6 @@ Puis ça appelle showAddMarkerDialog(point) qui ouvre le dialogue d'ajout d'év�
         mapView.getController().setCenter(point);
     }
 
-    @SuppressLint("NonConstantResourceId")
-    private void showMenu(GeoPoint p) {
-        // Créer un PopupMenu
-        PopupMenu popupMenu = new PopupMenu(this, findViewById(R.id.map));
-        MenuInflater inflater = popupMenu.getMenuInflater();
-        inflater.inflate(R.menu.context_menu, popupMenu.getMenu());
-        // Gérer les clics sur les options du menu
-        popupMenu.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.item12) {
-                addMarker(p); // Ajouter un marqueur à l'endroit du clic long
-                return true;
-            } else if (item.getItemId() == R.id.item22) {
-                zoomTo(p); // Zoomer sur le point
-                return true;
-            }
-            return false;
-        });
-        popupMenu.show();
-    }
-
     @Override
     public boolean onContextItemSelected(MenuItem item) {
         int id = item.getItemId();
@@ -652,7 +627,4 @@ Puis ça appelle showAddMarkerDialog(point) qui ouvre le dialogue d'ajout d'év�
             return super.onContextItemSelected(item);
         }
     }
-    }
-
-
-
+}
